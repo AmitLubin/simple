@@ -23,9 +23,11 @@ jobs:
     steps:
       - uses: jfrog/frogbot@v2
         env:
-          JF_URL: ${{ secrets.JF_URL }}
+          JF_URL: ${{ vars.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
           JF_GIT_TOKEN: ${{ secrets.JF_GIT_TOKEN }}
           JF_GIT_BASE_BRANCH: ${{ matrix.branch }}
-          JF_PROJECT: krypto-data
+          JF_PROJECT: ${{ vars.JF_PROJECT }}
           JF_DISABLE_CONTEXTUAL_ANALYSIS: "TRUE"
+          JF_WATCHES: ${{ vars.JF_WATCHES }}
+          JF_FAIL: "true"
