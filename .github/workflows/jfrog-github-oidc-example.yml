@@ -18,6 +18,7 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
         with:
           oidc-provider-name: krypto-data-github-oidc
+          oidc-audience: krypto-data-github-oidc
 
       - name: Run JFrog CLI
         run: |
