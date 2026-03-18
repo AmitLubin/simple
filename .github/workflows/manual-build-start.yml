@@ -1,0 +1,43 @@
+name: Manual Build and Start
+
+on:
+  workflow_dispatch:
+    inputs:
+      node-version:
+        description: 'Node.js version'
+        required: true
+        default: '20.x'
+        type: choice
+        options:
+          - 18.x
+          - 20.x
+          - 21.x
+
+jobs:
+  build-and-start:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build package
+      run: npm run build
+      continue-on-error: true
+
+    - name: Start application
+      run: npm start
+
+    - name: Show execution summary
+      run: |
+        echo "Build and start completed!"
+        echo "Node version: ${{ inputs.node-version }}"
+        date

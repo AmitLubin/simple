@@ -1,0 +1,111 @@
+name: JFrog OIDC - Publish NPM Artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write      
+  contents: read      
+
+jobs:
+  publish-npm-artifact:
+    name: Create & Publish Dummy NPM Artifact
+    runs-on: ubuntu-latest
+
+    env:
+      JFROG_PLATFORM_URL: https://amitbynet.jfrog.io 
+      OIDC_PROVIDER_NAME: krypto-data-github-oidc
+      NPM_REPO: krypto-data-npm-dev-local
+      BUILD_NAME: krypto-data-dlt-build
+      BUILD_NUMBER: ${{ github.run_number }}
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Setup JFrog CLI with OIDC (no static credentials) ─────────────────
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: latest
+        env:
+          JF_URL: ${{ env.JFROG_PLATFORM_URL }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # OIDC trust relationship — references the provider configured in JFrog Platform
+        # The 'oidc-provider-name' must match exactly what was created in Task 1
+        id: setup-jfrog
+        # setup-jfrog-cli v4 performs the OIDC exchange automatically when
+        # the workflow has id-token: write and the provider name is supplied
+        # via the environment variable below:
+      
+      - name: Authenticate via OIDC
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ env.JFROG_PLATFORM_URL }}
+        with:
+          oidc-provider-name: ${{ env.OIDC_PROVIDER_NAME }}
+
+      # ── 3. Verify connectivity ────────────────────────────────────────────────
+      - name: Verify JFrog CLI connection
+        run: jf rt ping
+
+      # ── 4. Create dummy artifact ──────────────────────────────────────────────
+      - name: Create dlt-manifest.txt
+        run: |
+          cat <<EOF > dlt-manifest.txt
+          DLT Manifest
+          ============
+          Build Name   : ${{ env.BUILD_NAME }}
+          Build Number : ${{ env.BUILD_NUMBER }}
+          Commit SHA   : ${{ github.sha }}
+          Branch       : ${{ github.ref_name }}
+          Triggered by : ${{ github.actor }}
+          Timestamp    : $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          Repository   : ${{ github.repository }}
+          EOF
+          echo "--- dlt-manifest.txt contents ---"
+          cat dlt-manifest.txt
+
+      # ── 5. Start Build Info collection ───────────────────────────────────────
+      - name: Set Build Info env vars
+        run: |
+          # Tells every subsequent jf command which build to attach metadata to
+          echo "JFROG_CLI_BUILD_NAME=${{ env.BUILD_NAME }}"    >> $GITHUB_ENV
+          echo "JFROG_CLI_BUILD_NUMBER=${{ env.BUILD_NUMBER }}" >> $GITHUB_ENV
+
+      # ── 6. Collect environment variables for Build Info ───────────────────────
+      - name: Collect environment variables
+        run: |
+          # Captures all CI env vars (filtered by JFrog's default inclusion list)
+          # and attaches them to the build record
+          jf rt bce
+
+      # ── 7. Upload artifact to Artifactory ────────────────────────────────────
+      - name: Upload dlt-manifest.txt to krypto-data-npm-dev-local
+        run: |
+          jf rt upload \
+            "dlt-manifest.txt" \
+            "${{ env.NPM_REPO }}/krypto-data/${{ env.BUILD_NUMBER }}/" \
+            --build-name="${{ env.BUILD_NAME }}" \
+            --build-number="${{ env.BUILD_NUMBER }}" \
+            --fail-no-op
+
+      # ── 8. Collect Git metadata ───────────────────────────────────────────────
+      - name: Add Git metadata to Build Info
+        run: |
+          # Attaches VCS data (commit, branch, URL, message) to the build record
+          jf rt bag
+
+      # ── 9. Publish Build Info ─────────────────────────────────────────────────
+      - name: Publish Build Info to Artifactory
+        run: |
+          jf rt bp \
+            "${{ env.BUILD_NAME }}" \
+            "${{ env.BUILD_NUMBER }}"
+
+      # ── 10. Print Build Info URL for traceability ─────────────────────────────
+      - name: Print Build Info URL
+        run: |
+          echo "✅ Build Info published:"
+          echo "${{ env.JFROG_PLATFORM_URL }}/ui/builds/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}"
