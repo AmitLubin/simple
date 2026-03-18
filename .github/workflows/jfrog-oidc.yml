@@ -61,6 +61,11 @@ jobs:
         run: |
           echo "JFROG_CLI_BUILD_NAME=${{ env.BUILD_NAME }}"     >> $GITHUB_ENV
           echo "JFROG_CLI_BUILD_NUMBER=${{ env.BUILD_NUMBER }}" >> $GITHUB_ENV
+          echo "CI_BRANCH=${{ github.ref_name }}"               >> $GITHUB_ENV
+          echo "CI_COMMIT=${{ github.sha }}"                    >> $GITHUB_ENV
+          echo "CI_ACTOR=${{ github.actor }}"                   >> $GITHUB_ENV
+          echo "CI_WORKFLOW=${{ github.workflow }}"              >> $GITHUB_ENV
+          echo "CI_REPO=${{ github.repository }}"               >> $GITHUB_ENV
 
       # ── 6. Collect environment variables for Build Info ───────────────────────
       - name: Collect environment variables
