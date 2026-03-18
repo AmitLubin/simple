@@ -16,8 +16,10 @@ jobs:
       JFROG_PLATFORM_URL: https://amitbynet.jfrog.io
       OIDC_PROVIDER_NAME: krypto-data-github-oidc
       NPM_REPO: krypto-data-npm-dev-local
-      BUILD_NAME: krypto-data-dlt-build
+      BUILD_NAME: krypto-build
       BUILD_NUMBER: ${{ github.run_number }}
+      AUDIENCE: krypto-data-github-oidc
+      PROJECT_KEY: krypto-data
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
@@ -25,19 +27,13 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 2. Setup JFrog CLI with OIDC (single step — no static credentials) ───
-      #
-      #  IMPORTANT: Only ONE setup-jfrog-cli step must exist.
-      #  The 'oidc-audience' must match what is configured in the JFrog
-      #  OIDC provider under: Platform → Security → OIDC Integration.
-      #  Default JFrog-expected audience is "jfrog-github".
-      #  If you set a custom audience when creating the provider, use that value.
       - name: Setup JFrog CLI (OIDC)
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ env.JFROG_PLATFORM_URL }}
         with:
           oidc-provider-name: ${{ env.OIDC_PROVIDER_NAME }}
-          oidc-audience: krypto-data-github-oidc
+          oidc-audience: ${{ env.AUDIENCE }}
 
       # ── 3. Verify connectivity ────────────────────────────────────────────────
       - name: Verify JFrog CLI connection
@@ -68,7 +64,7 @@ jobs:
 
       # ── 6. Collect environment variables for Build Info ───────────────────────
       - name: Collect environment variables
-        run: jf rt bce
+        run: jf rt bce --project="${{ env.PROJECT_KEY }}"
 
       # ── 7. Upload artifact to Artifactory ────────────────────────────────────
       - name: Upload dlt-manifest.txt to krypto-data-npm-dev-local
@@ -78,12 +74,12 @@ jobs:
             "${{ env.NPM_REPO }}/krypto-data/${{ env.BUILD_NUMBER }}/" \
             --build-name="${{ env.BUILD_NAME }}" \
             --build-number="${{ env.BUILD_NUMBER }}" \
-            --project=krypto-data \
+            --project="${{ env.PROJECT_KEY }}" \
             --fail-no-op
 
       # ── 8. Collect Git metadata ───────────────────────────────────────────────
       - name: Add Git metadata to Build Info
-        run: jf rt bag --project=krypto-data
+        run: jf rt bag --project="${{ env.PROJECT_KEY }}"
 
       # ── 9. Publish Build Info ─────────────────────────────────────────────────
       - name: Publish Build Info to Artifactory
@@ -91,7 +87,7 @@ jobs:
           jf rt bp \
             "${{ env.BUILD_NAME }}" \
             "${{ env.BUILD_NUMBER }}" \
-            --project=krypto-data
+            --project="${{ env.PROJECT_KEY }}"
 
       # ── 10. Print Build Info URL ──────────────────────────────────────────────
       - name: Print Build Info URL
