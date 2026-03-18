@@ -78,18 +78,20 @@ jobs:
             "${{ env.NPM_REPO }}/krypto-data/${{ env.BUILD_NUMBER }}/" \
             --build-name="${{ env.BUILD_NAME }}" \
             --build-number="${{ env.BUILD_NUMBER }}" \
+            --project=krypto-data \
             --fail-no-op
 
       # ── 8. Collect Git metadata ───────────────────────────────────────────────
       - name: Add Git metadata to Build Info
-        run: jf rt bag
+        run: jf rt bag --project=krypto-data
 
       # ── 9. Publish Build Info ─────────────────────────────────────────────────
       - name: Publish Build Info to Artifactory
         run: |
           jf rt bp \
             "${{ env.BUILD_NAME }}" \
-            "${{ env.BUILD_NUMBER }}"
+            "${{ env.BUILD_NUMBER }}" \
+            --project=krypto-data
 
       # ── 10. Print Build Info URL ──────────────────────────────────────────────
       - name: Print Build Info URL
